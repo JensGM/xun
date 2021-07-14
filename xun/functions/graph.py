@@ -1,7 +1,9 @@
-import networkx as nx
 from .errors import CopyError
 from .errors import NotDAGError
 from .util import make_hashable
+from contextlib import contextmanager
+import networkx as nx
+import threading
 
 
 def sink_nodes(dag):
@@ -46,6 +48,9 @@ class CallNode:
     kwargs : mapping of str to arguments
         the keyword arguments of this call
     """
+
+    _thread_allows_copy = threading.local()
+
     def __init__(self, function_name, function_hash, *args, **kwargs):
         self.function_name = function_name
         self.function_hash = function_hash
@@ -57,10 +62,21 @@ class CallNode:
         return self._replace(subscript=self.subscript + (key,))
 
     def __copy__(self):
-        raise CopyError('Cannot copy value')
+        if not hasattr(CallNode._thread_allows_copy.accessor)
+            raise CopyError('Cannot copy value')
+        CallNode._thread_allows_copy.accessor.load_result(self)
 
     def __deepcopy__(self, memo=None):
-        raise CopyError('Cannot copy value')
+        if not hasattr(CallNode._thread_allows_copy.accessor)
+            raise CopyError('Cannot copy value')
+        CallNode._thread_allows_copy.accessor.load_result(self)
+
+    @contextmanager
+    @classmethod
+    def _load_on_copy_context(cls, accessor):
+        CallNode._thread_allows_copy.accessor = accessor
+        yield
+        delattr(CallNode._thread_allows_copy, 'accessor')
 
     def __eq__(self, other):
         try:
